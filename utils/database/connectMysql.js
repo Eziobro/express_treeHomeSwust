@@ -71,6 +71,7 @@ async function mysqlConnect(database, table) {
         console.log('enter update')
         const fields = paramsArr.join(' , ')
         const clause = dataArr.join(' , ')
+        console.log(`update ${Mysql.table} set ${clause} where ${fields}`)
         return await new Promise((resolve, reject) => {
             Mysql.connection.query(`update ${Mysql.table} set ${clause} where ${fields}`, (error, results, fields) => {
                 resolve(results);
@@ -83,8 +84,8 @@ async function mysqlConnect(database, table) {
         for (const key in params) {
             paramsArr.push(`${key} = '${params[key]}'`)
         }
-        const fields = paramsArr.join(' , ')
-        console.log('enter delete')
+        const fields = paramsArr.join(' , ');
+        console.log('enter delete');
         return await new Promise((resolve, reject) => {
             Mysql.connection.query(`delete from ${Mysql.table} where ${fields}`, (error, results, fields) => {
                 resolve(results);
@@ -102,10 +103,9 @@ async function mysqlConnect(database, table) {
         for (const key in params) {
             paramsArr.push(`${key} = '${params[key]}'`)
         }
-        console.log('enter sql')
-        const fields = paramsArr.join(' , ')
+        const fields = paramsArr.join(' and ')
         return await new Promise((resolve, reject) => {
-            Mysql.connection.query(`${sql} where ${fields}`, (error, results, fields) => {
+            Mysql.connection.query(`${sql} where ${paramsArr ? fields : ''}`, (error, results, fields) => {
                 resolve(results);
             })
         })
