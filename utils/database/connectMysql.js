@@ -34,7 +34,10 @@ async function mysqlConnect(database, table) {
             fieldsArr.push(_key);
             valuesArr.push(`'${params[_key]}'`);
         }
+        console.log('enter add')
+        console.log('sql_insert', `(${fieldsArr.join(',')}) VALUES (${valuesArr.join(',')})`)
         const sql_insert = `(${fieldsArr.join(',')}) VALUES (${valuesArr.join(',')})`;
+
         return await new Promise((resolve, reject) => {
             Mysql.connection.query(`insert into ${Mysql.table} ${fieldsArr.length ? sql_insert : ''}`, (error, results, fields) => {
                 resolve(results);
@@ -47,8 +50,8 @@ async function mysqlConnect(database, table) {
         for (const _key in params) {
             paramsArr.push(`${_key} like '%${params[_key]}%'`)
         }
+        console.log('enter find')
         const fields = paramsArr.join(' and ');
-        console.log(`select * from ${Mysql.table} ${fields ? 'where' : ''} ${fields}`)
         return await new Promise((resolve, reject) => {
             Mysql.connection.query(`select * from ${Mysql.table} ${fields ? 'where' : ''} ${fields}`, (error, results, fields) => {
                 resolve(results);
@@ -65,9 +68,9 @@ async function mysqlConnect(database, table) {
         for (const key in newData) {
             dataArr.push(`${key} = '${newData[key]}'`)
         }
+        console.log('enter update')
         const fields = paramsArr.join(' , ')
         const clause = dataArr.join(' , ')
-        console.log('sql', `update ${Mysql.table} set ${clause} where ${fields}`)
         return await new Promise((resolve, reject) => {
             Mysql.connection.query(`update ${Mysql.table} set ${clause} where ${fields}`, (error, results, fields) => {
                 resolve(results);
@@ -81,7 +84,7 @@ async function mysqlConnect(database, table) {
             paramsArr.push(`${key} = '${params[key]}'`)
         }
         const fields = paramsArr.join(' , ')
-        console.log('sql', `delete from ${Mysql.table} where ${fields}`)
+        console.log('enter delete')
         return await new Promise((resolve, reject) => {
             Mysql.connection.query(`delete from ${Mysql.table} where ${fields}`, (error, results, fields) => {
                 resolve(results);
@@ -90,16 +93,17 @@ async function mysqlConnect(database, table) {
     }
 
     async function _close() {
+        console.log('enter _close')
         Mysql.connection.end();
     }
 
-    async function sql(sql,params){
+    async function sql(sql, params) {
         let paramsArr = [];
         for (const key in params) {
             paramsArr.push(`${key} = '${params[key]}'`)
         }
+        console.log('enter sql')
         const fields = paramsArr.join(' , ')
-        console.log('sql', `delete from ${Mysql.table} where ${fields}`)
         return await new Promise((resolve, reject) => {
             Mysql.connection.query(`${sql} where ${fields}`, (error, results, fields) => {
                 resolve(results);
