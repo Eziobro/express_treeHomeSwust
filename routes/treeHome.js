@@ -4,7 +4,10 @@ const mysql = require('../utils/database/connectMysql');
 const {MOOD} = require('../utils/Enum');
 const moment = require('moment');
 
-/* GET home page. */
+/**
+ * @function 获取说说 /mood/list
+ * @requires moodId 心情id
+ */
 router.get('/list', async function (req, res, next) {
     const {moodId} = req.query;
     const exist = MOOD.some((value) => value.moodId == moodId);
@@ -16,7 +19,7 @@ router.get('/list', async function (req, res, next) {
         return;
     }
     const db = await mysql('TreeHome', 'remark');
-    const data = await db.sql('select * from remark inner join user on remark.userId = user.id', req.query);
+    const data = await db.sql('select * from remark inner join user on remark.userId = user.userId', req.query);
     res.send({
         code: 200,
         data: {
@@ -25,9 +28,42 @@ router.get('/list', async function (req, res, next) {
     })
 });
 
-router.post('/comment', async function (req, res, next) {
+/**
+ * @function 获取说说详情 /mood/remarkDetail
+ * @requires id 说说id
+ */
+router.get('/remarkDetail', async function (req, res, next) {
+    const {id} = req.query;
+    const db = await mysql('TreeHome', 'remark');
+    const data = await db.sql('select * from remark natural join user', req.query);
+    if (data == undefined) {
+        res.send({
+            code: 201,
+            data: '参数错误'
+        });
+        return;
+    }
+    res.send({
+        code: 200,
+        data: {
+            ...data[0]
+        }
+    })
+});
+
+/**
+ * @function 发布说说 /mood/remark
+ * @requires {
+ *     moodId:心情id,
+ *     context:说说正文
+ *     userId:用户id
+ * }
+ * @params {
+ *     img:正文图片
+ * }
+ */
+router.post('/remark', async function (req, res, next) {
     const {moodId, context, userId, img} = req.body;
-    console.log(req.body);
     const exist = MOOD.some((value) => value.moodId == moodId);
     if (!exist) {
         res.send({
@@ -58,18 +94,82 @@ router.post('/comment', async function (req, res, next) {
     })
 });
 
+/**
+ * @function 点赞 /mood/star
+ * @requires id 说说id
+ */
 router.post('/star', async function (req, res, next) {
     const {id} = req.body;
-    console.log(req.body);
-    const db = await mysql('TreeHome', 'remark');
-    const data = await db.sql('UPDATE remark SET star=star+1',{id});
-    if (!data) {
+    if (!id) {
         res.send({
             code: 201,
             data: '参数错误'
         });
         return;
     }
+    const db = await mysql('TreeHome', 'remark');
+    const data = await db.sql('UPDATE remark SET star=star+1', {id});
+    res.send({
+        code: 200,
+        data: {
+            list: data
+        }
+    })
+});
+
+/**
+ * @function 发布评论 /mood/publishComment
+ * @requires {
+ *     id:说说id
+ *     userId:用户id,
+ *     comment:评论
+ * }
+ */
+router.post('/publishComment', async function (req, res, next) {
+    const {id, userId, comment} = req.body;
+    const exist = [id, userId, comment].some(item => item == "");
+    if (exist) {
+        res.send({
+            code: 201,
+            data: '参数错误'
+        });
+        return;
+    }
+    const db = await mysql('TreeHome', 'comment');
+    await db.add({remarkId: id, userId, comment});
+    await db.sql('UPDATE remark SET comment=comment+1', {id});
+    res.send({
+        code: 200,
+        data: {
+            list: 'success'
+        }
+    })
+});
+
+/**
+ * @function 获取评论 /mood/getComment
+ * @requires {
+ *     id:说说id
+ *     userId:用户id
+ * }
+ */
+router.get('/getComment', async function (req, res, next) {
+    const {id, userId} = req.query;
+    console.log('req.query', req.query)
+    const exist = [id, userId].some(item => item == '');
+    if (exist) {
+        res.send({
+            code: 201,
+            data: '参数错误'
+        });
+        return;
+    }
+    const db = await mysql('TreeHome', 'comment');
+    const data = await db.sql(`select * from comment natural join user`, {
+        userId: userId,
+        remarkId: id
+    });
+    console.log('data',data)
     res.send({
         code: 200,
         data: {
