@@ -56,3 +56,9 @@ module.exports.MOOD = [
         moodId: 14,
     },
 ];
+
+module.exports.BASECONFIG = {
+    APPID:1109918821,
+    SECRET:'A4zAbjf52PCKQiUD',
+    GRANT_TYPE:'authorization_code',
+}

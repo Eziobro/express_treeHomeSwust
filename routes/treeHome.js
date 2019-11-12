@@ -118,6 +118,29 @@ router.post('/star', async function (req, res, next) {
 });
 
 /**
+ * @function 点赞 /mood/unstar
+ * @requires id 说说id
+ */
+router.post('/unstar', async function (req, res, next) {
+    const {id} = req.body;
+    if (!id) {
+        res.send({
+            code: 201,
+            data: '参数错误'
+        });
+        return;
+    }
+    const db = await mysql('TreeHome', 'remark');
+    const data = await db.sql('UPDATE remark SET star=star-1', {id});
+    res.send({
+        code: 200,
+        data: {
+            list: data
+        }
+    })
+});
+
+/**
  * @function 发布评论 /mood/publishComment
  * @requires {
  *     id:说说id

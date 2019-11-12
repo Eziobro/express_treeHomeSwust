@@ -1,4 +1,5 @@
-export const fixedZero = (val) => {
+const {Crypto} = require('cryptojs/cryptojs.js');
+module.exports = function fixedZero(val) {
     return val * 1 < 10 ? `0${val}` : val;
 };
 
@@ -8,7 +9,7 @@ export const fixedZero = (val) => {
  * @param parentPath
  * @returns {Array}
  */
-export const getPlainNode = (nodeList, parentPath = '') => {
+module.exports = function getPlainNode(nodeList, parentPath = '') {
     const arr = [];
     nodeList.forEach(node => {
         const item = node;
@@ -26,7 +27,7 @@ export const getPlainNode = (nodeList, parentPath = '') => {
     return arr;
 };
 
-function getRelation(str1, str2) {
+module.exports = function getRelation(str1, str2) {
     if (str1 === str2) {
     }
     const arr1 = str1.split('/');
@@ -40,7 +41,7 @@ function getRelation(str1, str2) {
     return 3;
 }
 
-function getRenderArr(routes) {
+module.exports = function getRenderArr(routes) {
     let renderArr = [];
     renderArr.push(routes[0]);
     for (let i = 1; i < routes.length; i += 1) {
@@ -61,7 +62,7 @@ function getRenderArr(routes) {
  * @param {string} path
  * @param routerData
  */
-export const getRoutes = (path, routerData) => {
+module.exports = function getRoutes(path, routerData) {
     let routes = Object.keys(routerData).filter(
         routePath => routePath.indexOf(path) === 0 && routePath !== path,
     );
@@ -84,11 +85,11 @@ export const getRoutes = (path, routerData) => {
 /* eslint no-useless-escape:0 */
 const reg = /(((^https?:(?:\/\/)?)(?:[-;:&=+$,\w]+@)?[A-Za-z0-9.-]+(?::\d+)?|(?:www.|[-;:&=+$,\w]+@)[A-Za-z0-9.-]+)((?:\/[\+~%\/.\w-_]*)?\??(?:[-\+=&;%@.\w_]*)#?(?:[\w]*))?)$/;
 
-export const isUrl = (path) => {
+module.exports = function isUrl(path) {
     return reg.test(path);
 };
 
-export const deepCopy = (o) => {
+module.exports = function deepCopy(o) {
     const isArray = o instanceof Array;
     const isObject = o instanceof Object;
     if (!isObject) return o;
@@ -97,14 +98,14 @@ export const deepCopy = (o) => {
     return n;
 };
 
-export const findValueByKey = (key, src, type, defaults) => {
+module.exports = function findValueByKey(key, src, type, defaults) {
     const result = src.filter((current) => {
         return current.key == key;
     })[0];
     return result ? (type ? result[type] : result.value) : type ? defaults : '空';
 };
 
-export const filter = (obj, func) => {
+module.exports = function filter(obj, func) {
     let result = {};
     for (let _key in obj) {
         if (obj.hasOwnProperty(_key) && func(_key, obj[_key])) {
@@ -120,7 +121,7 @@ export const filter = (obj, func) => {
  * @param maxLen 字符串的最大长度
  * @returns {string}
  */
-export const Ellipsis = (str, maxLen) => {
+module.exports = function Ellipsis(str, maxLen) {
     str = str.trim();
     if (typeof str != 'string') {
         return '请传入字符串'
@@ -142,7 +143,7 @@ export const Ellipsis = (str, maxLen) => {
  * @param immediate 是否立即执行
  * @returns {function(): *}
  */
-export const debounce = (func, wait, immediate) => {
+module.exports = function debounce(func, wait, immediate) {
     let timeout, result;
     const debounced = function () {
         const context = this;
@@ -179,7 +180,7 @@ export const debounce = (func, wait, immediate) => {
  * @param Date 较晚的日期
  * @returns {string|{hour: number, year: number, day: number, minute: number, second: number}}
  */
-export const dateCalculate = (earlierDate, Date) => {
+module.exports = function dateCalculate(earlierDate, Date) {
     if (type(earlierDate) !== 'date' && type(Date) !== 'date') {
         console.log("参数格式错误");
         return 'xxxx-xx-xx';
@@ -199,7 +200,7 @@ export const dateCalculate = (earlierDate, Date) => {
  * @param obj 需要判断的对象
  * @returns {string|*}
  */
-export const type = (obj) => {
+module.exports = function type(obj) {
     const class2type = {};
     "Boolean Number String Function Array Date RegExp Object Error".split(" ").map(function (item, index) {
         class2type["[object " + item + "]"] = item.toLowerCase();
@@ -218,7 +219,7 @@ export const type = (obj) => {
  * @param fmt
  * @returns {void | string}
  */
-export const timeFormat = (time, fmt) => {
+module.exports.timeFormat = function (time, fmt) {
     const o = {
         "M+": time.getMonth() + 1, //月份
         "d+": time.getDate(), //日
@@ -239,10 +240,52 @@ export const timeFormat = (time, fmt) => {
  * @param array
  * @returns {*}
  */
-export const unique = (array) => {
+module.exports.unique = function (array) {
     const obj = {};
     return array.filter(function (item, index, array) {
         return obj.hasOwnProperty(typeof item + JSON.stringify(item)) ? false : (obj[typeof item + JSON
             .stringify(item)] = true)
     })
 };
+
+/**
+ * @description
+ * 对称加密
+ * @param {*} data 加密数据
+ * @param {*} algorithm 加密算法
+ * @param {*} key 密钥
+ * @param {*} iv 向量
+ * @returns
+ */
+module.exports.cipherivEncrypt = function (data, algorithm, key, iv) {
+    const cipheriv = crypto.createCipheriv(algorithm, key, iv)
+    let encrypted = cipheriv.update(data, 'utf8', 'hex');
+    encrypted += cipheriv.final('hex');
+    return encrypted
+}
+
+/**
+ * @description
+ * 对称解密
+ * @param encryptedData
+ * @param sessionKey
+ * @param {*} iv 向量
+ * @returns
+ */
+module.exports.cipherivDecrypt = function (encryptedData, sessionKey, iv) {
+    const mode = new Crypto.mode.CBC(Crypto.pad.pkcs7);
+
+    encryptedData = Crypto.util.base64ToBytes(encryptedData);
+    sessionKey = Crypto.util.base64ToBytes(sessionKey);
+    iv = Crypto.util.base64ToBytes(iv);
+
+    // 对称解密使用的算法为 AES-128-CBC，数据采用PKCS#7填充
+
+    const bytes = Crypto.AES.decrypt(encryptedData, sessionKey, {
+        asBpytes: true,
+        iv: iv,
+        mode: mode
+    });
+
+    return JSON.parse(bytes)
+}
