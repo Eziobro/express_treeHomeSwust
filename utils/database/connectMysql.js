@@ -93,15 +93,15 @@ async function mysqlConnect(database, table) {
         Mysql.connection.end();
     }
 
-    async function sql(sql, params, pagination) {
+    async function sql(sql, params, pagination, others) {
         let paramsArr = [];
         for (const key in params) {
             paramsArr.push(`${key} = '${params[key]}'`)
         }
         const fields = paramsArr.join(' and ');
-        console.log(`${sql} where ${paramsArr ? fields : ''} ${pagination ? `limit ${pagination.pageSize * (pagination.currentPage - 1)},${pagination.pageSize}` : ''}`)
+        console.log(`${sql} where ${paramsArr ? fields : ''} ${others ? others : ''} ${pagination ? `limit ${pagination.pageSize * (pagination.currentPage - 1)},${pagination.pageSize}` : ''}`)
         return await new Promise((resolve, reject) => {
-            Mysql.connection.query(`${sql} where ${paramsArr ? fields : ''} ${pagination ? `limit ${pagination.pageSize * (pagination.currentPage - 1)},${pagination.pageSize}` : ''}`, (error, results, fields) => {
+            Mysql.connection.query(`${sql} where ${paramsArr ? fields : ''} ${others ? others : ''} ${pagination ? `limit ${pagination.pageSize * (pagination.currentPage - 1)},${pagination.pageSize}` : ''}`, (error, results, fields) => {
                 resolve(results);
             })
         })

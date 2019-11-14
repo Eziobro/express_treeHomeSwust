@@ -21,11 +21,12 @@ router.post('/list', async function (req, res, next) {
         return;
     }
     const db = await mysql('TreeHome', 'remark');
-    const data = await db.sql('select * from remark inner join user on remark.userId = user.userId', {...params}, pagination);
+
+    const data = await db.sql('select * from user natural right join (select * from remark natural left join (select remarkId,count(*) as comment from comment group by remarkId) as comment) as remark', {...params}, pagination, 'order by publishDate desc');
     res.send({
         code: 200,
         data: {
-            list: data,
+            list: Array.from(data),
             pagination,
         }
     })
@@ -36,9 +37,10 @@ router.post('/list', async function (req, res, next) {
  * @requires id 说说id
  */
 router.get('/remarkDetail', async function (req, res, next) {
-    const {id, pagenation = {}} = req.query;
+    const {id} = req.query;
     const db = await mysql('TreeHome', 'remark');
-    const data = await db.sql('select * from remark natural join user', {id}, pagenation);
+    const data = await db.sql('select * from remark natural join user', {id});
+    const coment = await db.sql('select count(*) from')
     if (data == undefined) {
         res.send({
             code: 201,
@@ -182,7 +184,6 @@ router.post('/publishComment', async function (req, res, next) {
  */
 router.get('/getComment', async function (req, res, next) {
     const {id, userId} = req.query;
-    console.log('req.query', req.query)
     const exist = [id, userId].some(item => item == '');
     if (exist) {
         res.send({
@@ -196,7 +197,6 @@ router.get('/getComment', async function (req, res, next) {
         userId: userId,
         remarkId: id
     });
-    console.log('data', data)
     res.send({
         code: 200,
         data: {
