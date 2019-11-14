@@ -8,9 +8,11 @@ const moment = require('moment');
  * @function 获取说说 /mood/list
  * @requires moodId 心情id
  */
-router.get('/list', async function (req, res, next) {
-    const {moodId} = req.query;
-    const exist = MOOD.some((value) => value.moodId == moodId);
+router.post('/list', async function (req, res, next) {
+    const {pagination = {pageSize: 10, currentPage: 1}, ...params} = req.body;
+    const token = req.get('token');
+
+    const exist = MOOD.some((value) => value.moodId == params.moodId);
     if (!exist) {
         res.send({
             code: 201,
@@ -19,11 +21,12 @@ router.get('/list', async function (req, res, next) {
         return;
     }
     const db = await mysql('TreeHome', 'remark');
-    const data = await db.sql('select * from remark inner join user on remark.userId = user.userId', req.query);
+    const data = await db.sql('select * from remark inner join user on remark.userId = user.userId', {...params}, pagination);
     res.send({
         code: 200,
         data: {
-            list: data
+            list: data,
+            pagination,
         }
     })
 });
@@ -33,9 +36,9 @@ router.get('/list', async function (req, res, next) {
  * @requires id 说说id
  */
 router.get('/remarkDetail', async function (req, res, next) {
-    const {id} = req.query;
+    const {id, pagenation = {}} = req.query;
     const db = await mysql('TreeHome', 'remark');
-    const data = await db.sql('select * from remark natural join user', req.query);
+    const data = await db.sql('select * from remark natural join user', {id}, pagenation);
     if (data == undefined) {
         res.send({
             code: 201,
@@ -65,6 +68,7 @@ router.get('/remarkDetail', async function (req, res, next) {
 router.post('/remark', async function (req, res, next) {
     const {moodId, context, userId, img} = req.body;
     const exist = MOOD.some((value) => value.moodId == moodId);
+    console.log(req.body);
     if (!exist) {
         res.send({
             code: 201,
@@ -99,7 +103,7 @@ router.post('/remark', async function (req, res, next) {
  * @requires id 说说id
  */
 router.post('/star', async function (req, res, next) {
-    const {id} = req.body;
+    const {id, pagination} = req.body;
     if (!id) {
         res.send({
             code: 201,
@@ -108,7 +112,7 @@ router.post('/star', async function (req, res, next) {
         return;
     }
     const db = await mysql('TreeHome', 'remark');
-    const data = await db.sql('UPDATE remark SET star=star+1', {id});
+    const data = await db.sql('UPDATE remark SET star=star+1', {id}, pagination);
     res.send({
         code: 200,
         data: {
@@ -122,7 +126,7 @@ router.post('/star', async function (req, res, next) {
  * @requires id 说说id
  */
 router.post('/unstar', async function (req, res, next) {
-    const {id} = req.body;
+    const {id, pagination} = req.body;
     if (!id) {
         res.send({
             code: 201,
@@ -192,7 +196,7 @@ router.get('/getComment', async function (req, res, next) {
         userId: userId,
         remarkId: id
     });
-    console.log('data',data)
+    console.log('data', data)
     res.send({
         code: 200,
         data: {

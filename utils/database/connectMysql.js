@@ -35,23 +35,23 @@ async function mysqlConnect(database, table) {
             valuesArr.push(`'${params[_key]}'`);
         }
         const sql_insert = `(${fieldsArr.join(',')}) VALUES (${valuesArr.join(',')})`;
-        console.log('add', `insert into ${Mysql.table} ${fieldsArr.length ? sql_insert : ''}`)
+        console.log('add', `replace into ${Mysql.table} ${fieldsArr.length ? sql_insert : ''}`);
         return await new Promise((resolve, reject) => {
-            Mysql.connection.query(`insert into ${Mysql.table} ${fieldsArr.length ? sql_insert : ''}`, (error, results, fields) => {
+            Mysql.connection.query(`replace into ${Mysql.table} ${fieldsArr.length ? sql_insert : ''}`, (error, results, fields) => {
                 resolve(results);
             })
         })
     }
 
-    async function find(params) {
+    async function find(params, pagination) {
         let paramsArr = [];
         for (const _key in params) {
             paramsArr.push(`${_key} like '%${params[_key]}%'`)
         }
         const fields = paramsArr.join(' and ');
-        console.log('find', `select * from ${Mysql.table} ${fields ? 'where' : ''} ${fields}`)
+        console.log('find', `select * from ${Mysql.table} ${fields ? 'where' : ''} ${fields} ${pagination ? `limit ${pagination.pageSize * (pagination.currentPage - 1)},${pagination.pageSize}` : ''}`)
         return await new Promise((resolve, reject) => {
-            Mysql.connection.query(`select * from ${Mysql.table} ${fields ? 'where' : ''} ${fields}`, (error, results, fields) => {
+            Mysql.connection.query(`select * from ${Mysql.table} ${fields ? 'where' : ''} ${fields} ${pagination ? `limit ${pagination.pageSize * (pagination.currentPage - 1)},${pagination.pageSize}` : ''}`, (error, results, fields) => {
                 resolve(results);
             })
         })
@@ -67,10 +67,10 @@ async function mysqlConnect(database, table) {
             dataArr.push(`${key} = '${newData[key]}'`)
         }
         const fields = paramsArr.join(' , ')
-        const clause = dataArr.join(' , ')
-        console.log('update', `update ${Mysql.table} set ${clause} where ${fields}`)
+        const clause = dataArr.join(' , ');
+        console.log('update', `replace ${Mysql.table} set ${clause} where ${fields}`)
         return await new Promise((resolve, reject) => {
-            Mysql.connection.query(`update ${Mysql.table} set ${clause} where ${fields}`, (error, results, fields) => {
+            Mysql.connection.query(`replace ${Mysql.table} set ${clause} where ${fields}`, (error, results, fields) => {
                 resolve(results);
             })
         })
@@ -82,7 +82,6 @@ async function mysqlConnect(database, table) {
             paramsArr.push(`${key} = '${params[key]}'`)
         }
         const fields = paramsArr.join(' , ');
-        console.log('enter delete');
         return await new Promise((resolve, reject) => {
             Mysql.connection.query(`delete from ${Mysql.table} where ${fields}`, (error, results, fields) => {
                 resolve(results);
@@ -91,19 +90,18 @@ async function mysqlConnect(database, table) {
     }
 
     async function _close() {
-        console.log('enter close')
         Mysql.connection.end();
     }
 
-    async function sql(sql, params) {
+    async function sql(sql, params, pagination) {
         let paramsArr = [];
         for (const key in params) {
             paramsArr.push(`${key} = '${params[key]}'`)
         }
         const fields = paramsArr.join(' and ');
-        console.log('sql', `${sql} where ${paramsArr ? fields : ''}`)
+        console.log(`${sql} where ${paramsArr ? fields : ''} ${pagination ? `limit ${pagination.pageSize * (pagination.currentPage - 1)},${pagination.pageSize}` : ''}`)
         return await new Promise((resolve, reject) => {
-            Mysql.connection.query(`${sql} where ${paramsArr ? fields : ''}`, (error, results, fields) => {
+            Mysql.connection.query(`${sql} where ${paramsArr ? fields : ''} ${pagination ? `limit ${pagination.pageSize * (pagination.currentPage - 1)},${pagination.pageSize}` : ''}`, (error, results, fields) => {
                 resolve(results);
             })
         })

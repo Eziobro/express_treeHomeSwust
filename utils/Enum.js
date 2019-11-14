@@ -58,7 +58,15 @@ module.exports.MOOD = [
 ];
 
 module.exports.BASECONFIG = {
-    APPID:1109918821,
-    SECRET:'A4zAbjf52PCKQiUD',
-    GRANT_TYPE:'authorization_code',
+    APPID: 1109918821,
+    SECRET: 'A4zAbjf52PCKQiUD',
+    GRANT_TYPE: 'authorization_code',
 }
+
+module.exports.COS = {
+    SECRETID: 'AKIDLOL9nJzjcLo7GHLpOlyyAFBxZ2OaJNXX',
+    SECRETKEY: 'EKI6l3HOOGzYxCzd8SdjkbJZhgYGoEWg',
+    BUCKET: 'tree-home-1259219507',
+    REGION: 'ap-chengdu',
+}
+

@@ -1,4 +1,8 @@
 const {Crypto} = require('cryptojs/cryptojs.js');
+const {COS} = require('../utils/Enum');
+const path = require('path');
+const jwt = require('jsonwebtoken');
+
 module.exports = function fixedZero(val) {
     return val * 1 < 10 ? `0${val}` : val;
 };
@@ -278,14 +282,114 @@ module.exports.cipherivDecrypt = function (encryptedData, sessionKey, iv) {
     encryptedData = Crypto.util.base64ToBytes(encryptedData);
     sessionKey = Crypto.util.base64ToBytes(sessionKey);
     iv = Crypto.util.base64ToBytes(iv);
-
     // 对称解密使用的算法为 AES-128-CBC，数据采用PKCS#7填充
-
     const bytes = Crypto.AES.decrypt(encryptedData, sessionKey, {
         asBpytes: true,
         iv: iv,
         mode: mode
     });
-
+    console.log(JSON.parse(bytes))
     return JSON.parse(bytes)
+};
+
+module.exports.checkPath = function (path) {
+    const reg = /\//gi
 }
+
+module.exports.uploadFile = function (rooter, filename, file, func) {
+    const cos = new COS({
+        SecretId: COS.SECRETID,
+        SecretKey: COS.SECRETKEY,
+    });
+    cos.putObject({
+        Bucket: COS.BUCKET,
+        Region: COS.REGION,
+        Key: `${rooter}/${filename}`,
+        Body: file,
+    }, function (err, data) {
+        if (err) {
+            func(data);
+            return;
+        }
+        func(data);
+    });
+};
+
+module.exports.downloadFile = function (rooter, filename, func) {
+    const cos = new COS({
+        SecretId: COS.SECRETID,
+        SecretKey: COS.SECRETKEY,
+    });
+    cos.getObject({
+        Bucket: COS.BUCKET,
+        Region: COS.REGION,
+        Key: `${rooter}/${filename}`,
+        Output: path.join(__dirname, '../public', `${rooter}/${filename}`)
+    }, function (err, data) {
+        if (err) {
+            func(data);
+            return;
+        }
+        func(data);
+    });
+};
+
+module.exports.deleteFile = function (rooter, filename, func) {
+    const cos = new COS({
+        SecretId: COS.SECRETID,
+        SecretKey: COS.SECRETKEY,
+    });
+    cos.deleteObject({
+        Bucket: COS.BUCKET,
+        Region: COS.REGION,
+        Key: `${rooter}/${filename}`,
+    }, function (err, data) {
+        if (err) {
+            func(data);
+            return;
+        }
+        func(data);
+    });
+};
+
+module.exports.selectFile = function (rooter, filename, func) {
+    const cos = new COS({
+        SecretId: COS.SECRETID,
+        SecretKey: COS.SECRETKEY,
+    });
+    cos.getBucket({
+        Bucket: COS.BUCKET,
+        Region: COS.REGION,
+        Key: `${rooter}/${filename}`,
+    }, function (err, data) {
+        if (err) {
+            func(data);
+            return;
+        }
+        func(data);
+    });
+};
+
+module.exports.signToken = function (data, privateKey, expiresIn, algorithm) {
+    const config = {};
+    if (algorithm) {
+        config.algorithm = algorithm
+    }
+    if (expiresIn) {
+        config.expiresIn = expiresIn
+    }
+    return jwt.sign(data, privateKey, {...config})
+};
+
+module.exports.verifyToken = function (token, privateKey, callback) {
+    let data;
+    jwt.verify(token, privateKey, (error, decoded) => {
+        data = error || decoded;
+        callback(error, decoded);
+    });
+    return data;
+};
+
+module.exports.decodeToken = function (token,) {
+    return jwt.decode(token);
+};
