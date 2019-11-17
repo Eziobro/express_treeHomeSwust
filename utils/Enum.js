@@ -1,5 +1,9 @@
 module.exports.MOOD = [
     {
+        value: '全部',
+        moodId: 0,
+    },
+    {
         value: '快乐',
         moodId: 1,
     },
@@ -70,3 +74,14 @@ module.exports.COS = {
     REGION: 'ap-chengdu',
 }
 
+const token = [
+    'eyJhbGciOiJIUzI1NiJ9.OUM4NjJCQTYwOTVGQURCOUY4RUFGRDQ5QzI2Qzc1ODU.1UVXiIvHqO6lPHqUX-u0MH7M6t8xIsgpdhNJbIFwWpM'
+]
+
+module.exports.NETSTATUS = {
+    200: 'ok',
+    201: '参数错误',
+    202: "未知用户",
+    203: '非授权信息',
+    204: '未知错误'
+}

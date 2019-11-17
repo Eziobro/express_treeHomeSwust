@@ -1,7 +1,8 @@
-const {Crypto} = require('cryptojs/cryptojs.js');
-const {COS} = require('../utils/Enum');
+const Crypto = require('cryptojs/cryptojs.js').Crypto;
+const {COS, NETSTATUS} = require('../utils/Enum');
 const path = require('path');
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
 
 module.exports = function fixedZero(val) {
     return val * 1 < 10 ? `0${val}` : val;
@@ -254,22 +255,6 @@ module.exports.unique = function (array) {
 
 /**
  * @description
- * 对称加密
- * @param {*} data 加密数据
- * @param {*} algorithm 加密算法
- * @param {*} key 密钥
- * @param {*} iv 向量
- * @returns
- */
-module.exports.cipherivEncrypt = function (data, algorithm, key, iv) {
-    const cipheriv = crypto.createCipheriv(algorithm, key, iv)
-    let encrypted = cipheriv.update(data, 'utf8', 'hex');
-    encrypted += cipheriv.final('hex');
-    return encrypted
-}
-
-/**
- * @description
  * 对称解密
  * @param encryptedData
  * @param sessionKey
@@ -277,19 +262,29 @@ module.exports.cipherivEncrypt = function (data, algorithm, key, iv) {
  * @returns
  */
 module.exports.cipherivDecrypt = function (encryptedData, sessionKey, iv) {
-    const mode = new Crypto.mode.CBC(Crypto.pad.pkcs7);
+    // base64 decode ：使用 CryptoJS 中 Crypto.util.base64ToBytes()进行 base64解码
+    var encryptedData = Crypto.util.base64ToBytes(encryptedData)
+    var key = Crypto.util.base64ToBytes(sessionKey);
+    var iv = Crypto.util.base64ToBytes(iv);
 
-    encryptedData = Crypto.util.base64ToBytes(encryptedData);
-    sessionKey = Crypto.util.base64ToBytes(sessionKey);
-    iv = Crypto.util.base64ToBytes(iv);
     // 对称解密使用的算法为 AES-128-CBC，数据采用PKCS#7填充
-    const bytes = Crypto.AES.decrypt(encryptedData, sessionKey, {
-        asBpytes: true,
-        iv: iv,
-        mode: mode
-    });
-    console.log(JSON.parse(bytes))
-    return JSON.parse(bytes)
+    var mode = new Crypto.mode.CBC(Crypto.pad.pkcs7);
+
+    try {
+        // 解密
+        var bytes = Crypto.AES.decrypt(encryptedData, key, {
+            asBpytes: true,
+            iv: iv,
+            mode: mode
+        });
+
+        var decryptResult = JSON.parse(bytes);
+
+    } catch (err) {
+        console.log(err)
+    }
+
+    return decryptResult
 };
 
 module.exports.checkPath = function (path) {
@@ -390,6 +385,44 @@ module.exports.verifyToken = function (token, privateKey, callback) {
     return data;
 };
 
-module.exports.decodeToken = function (token,) {
+module.exports._decryptData = function (encryptedData, sessionKey, iv) {
+    let decoded;
+// base64 decode
+    var sessionKey = Buffer.from(sessionKey, 'base64').toString('utf8')
+    encryptedData = Buffer.from(encryptedData, 'base64').toString('utf8')
+    iv = Buffer.from(iv, 'base64').toString('utf8')
+
+    try {
+        // 解密
+        const decipher = crypto.createDecipheriv('aes-128-cbc', sessionKey, iv);
+        // 设置自动 padding 为 true，删除填充补位
+        decipher.setAutoPadding(true)
+        decoded = decipher.update(encryptedData, 'binary', 'utf8');
+        decoded += decipher.final('utf8')
+
+        decoded = JSON.parse(decoded)
+
+    } catch (err) {
+        console.log('err', err);
+    }
+
+    return decoded
+}
+
+module.exports.decodeToken = function (token) {
     return jwt.decode(token);
 };
+
+module.exports.dataDeal = function (code, data) {
+    return {
+        code: code,
+        data: code === 200 ? data ? data : NETSTATUS[code] : NETSTATUS[code],
+    }
+};
+
+module.exports.isGetRequire = function (data = []) {
+    if (data.length === 0) {
+        return true
+    }
+    return !data.some(item => item == "");
+}

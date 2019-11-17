@@ -3,6 +3,7 @@ var router = express.Router();
 const mysql = require('../utils/database/connectMysql');
 const {MOOD} = require('../utils/Enum');
 const moment = require('moment');
+const {uploadFile, signToken, verifyToken, decodeToken, cipherivDecrypt, dataDeal, isGetRequire} = require('../utils/utils');
 
 /**
  * @function 获取说说 /mood/list
@@ -11,25 +12,23 @@ const moment = require('moment');
 router.post('/list', async function (req, res, next) {
     const {pagination = {pageSize: 10, currentPage: 1}, ...params} = req.body;
     const token = req.get('token');
-
-    const exist = MOOD.some((value) => value.moodId == params.moodId);
+    const exist = MOOD.some((value) => value.moodId == params.moodid);
     if (!exist) {
-        res.send({
-            code: 201,
-            data: '参数错误'
-        });
+        res.send(dataDeal(201));
         return;
     }
-    const db = await mysql('TreeHome', 'remark');
-
-    const data = await db.sql('select * from user natural right join (select * from remark natural left join (select remarkId,count(*) as comment from comment group by remarkId) as comment) as remark', {...params}, pagination, 'order by publishDate desc');
-    res.send({
-        code: 200,
-        data: {
-            list: Array.from(data),
-            pagination,
-        }
-    })
+    const db_remark = await mysql('TreeHome', 'remark');
+    if (params.moodid == 0) {
+        delete params.moodid
+    }
+    const data = await db_remark.sql('select * from qq_user natural right join (select * from remark natural left join (select remarkid,count(*) as comment from comment group by remarkid) as comment) as remark', params, pagination, 'order by publishDate desc');
+    const total = await db_remark.sql(`select count(*) as total from qq_user natural right join (select * from remark natural left join (select remarkid,count(*) as comment from comment group by remarkid) as comment) as remark`, {...params}, "", 'order by publishDate desc');
+    await db_remark.close();
+    pagination.total = total ? total[0].total : 0;
+    res.send(dataDeal(200, {
+        list: Array.from(data || []),
+        pagination,
+    }))
 });
 
 /**
@@ -39,21 +38,13 @@ router.post('/list', async function (req, res, next) {
 router.get('/remarkDetail', async function (req, res, next) {
     const {id} = req.query;
     const db = await mysql('TreeHome', 'remark');
-    const data = await db.sql('select * from remark natural join user', {id});
-    const coment = await db.sql('select count(*) from')
+    const data = await db.sql('select * from remark natural join qq_user', {remarkid: id});
+    await db.close();
     if (data == undefined) {
-        res.send({
-            code: 201,
-            data: '参数错误'
-        });
+        res.send(dataDeal(204));
         return;
     }
-    res.send({
-        code: 200,
-        data: {
-            ...data[0]
-        }
-    })
+    res.send(dataDeal(200, {...data[0]}))
 });
 
 /**
@@ -61,43 +52,37 @@ router.get('/remarkDetail', async function (req, res, next) {
  * @requires {
  *     moodId:心情id,
  *     context:说说正文
- *     userId:用户id
  * }
  * @params {
- *     img:正文图片
+ *     imgUrl:正文图片地址
  * }
  */
 router.post('/remark', async function (req, res, next) {
-    const {moodId, context, userId, img} = req.body;
-    const exist = MOOD.some((value) => value.moodId == moodId);
-    console.log(req.body);
-    if (!exist) {
-        res.send({
-            code: 201,
-            data: '不存在该用户'
-        });
+    const {moodId = 0, context, imgUrl} = req.body;
+    const token = req.get('token');
+    const verify_openid = await decodeToken(token);
+    const db_authority = await mysql('TreeHome', 'authority');
+    const dbData = await db_authority.find({openid: verify_openid});
+    await db_authority.close();
+    if (dbData.length === 0) {
+        res.send(dataDeal(202));
         return;
     }
-    const db = await mysql('TreeHome', 'remark');
-    const data = await db.add({
-        ...req.body,
+    const db_remark = await mysql('TreeHome', 'remark');
+    const data = await db_remark.add({
+        openid: verify_openid,
+        context,
+        moodid: moodId,
+        img: imgUrl,
         star: 0,
-        comment: 0,
         publishDate: moment(new Date()).format('YYYY-MM-DD HH:mm:ss')
     });
+    await db_remark.close()
     if (!data) {
-        res.send({
-            code: 201,
-            data: '参数错误'
-        });
+        res.send(dataDeal(204));
         return;
     }
-    res.send({
-        code: 200,
-        data: {
-            list: data
-        }
-    })
+    res.send(dataDeal(200, {list: {data}}))
 });
 
 /**
@@ -105,22 +90,23 @@ router.post('/remark', async function (req, res, next) {
  * @requires id 说说id
  */
 router.post('/star', async function (req, res, next) {
-    const {id, pagination} = req.body;
+    const {id} = req.body;
     if (!id) {
-        res.send({
-            code: 201,
-            data: '参数错误'
-        });
+        res.send(dataDeal(201))
+        return;
+    }
+    const token = req.get('token');
+    const verify_openid = await decodeToken(token);
+    const db_authority = await mysql('TreeHome', 'authority');
+    const dbData = await db_authority.find({openid: verify_openid});
+    await db_authority.close();
+    if (dbData.length === 0) {
+        res.send(dataDeal(202));
         return;
     }
     const db = await mysql('TreeHome', 'remark');
-    const data = await db.sql('UPDATE remark SET star=star+1', {id}, pagination);
-    res.send({
-        code: 200,
-        data: {
-            list: data
-        }
-    })
+    const data = await db.sql('UPDATE remark SET star=star+1', {remarkid: id});
+    res.send(dataDeal(200))
 });
 
 /**
@@ -128,45 +114,51 @@ router.post('/star', async function (req, res, next) {
  * @requires id 说说id
  */
 router.post('/unstar', async function (req, res, next) {
-    const {id, pagination} = req.body;
+    const {id} = req.body;
+    const token = req.get('token');
     if (!id) {
-        res.send({
-            code: 201,
-            data: '参数错误'
-        });
+        res.send(dataDeal(201));
+        return;
+    }
+    const verify_openid = await decodeToken(token);
+    const db_authority = await mysql('TreeHome', 'authority');
+    const dbData = await db_authority.find({openid: verify_openid});
+    await db_authority.close();
+    if (dbData.length === 0) {
+        res.send(dataDeal(202));
         return;
     }
     const db = await mysql('TreeHome', 'remark');
-    const data = await db.sql('UPDATE remark SET star=star-1', {id});
-    res.send({
-        code: 200,
-        data: {
-            list: data
-        }
-    })
+    const data = await db.sql('UPDATE remark SET star=star-1', {remarkid: id});
+    await db.close();
+    res.send(dataDeal(200))
 });
 
 /**
  * @function 发布评论 /mood/publishComment
  * @requires {
  *     id:说说id
- *     userId:用户id,
  *     comment:评论
  * }
  */
-router.post('/publishComment', async function (req, res, next) {
-    const {id, userId, comment} = req.body;
-    const exist = [id, userId, comment].some(item => item == "");
+router.post('/publishcomment', async function (req, res, next) {
+    const {remarkid, comment} = req.body;
+    const exist = [remarkid, comment].some(item => item == "");
     if (exist) {
-        res.send({
-            code: 201,
-            data: '参数错误'
-        });
+        res.send(dataDeal(201));
+        return;
+    }
+    const token = req.get('token');
+    const verify_openid = await decodeToken(token);
+    const db_authority = await mysql('TreeHome', 'authority');
+    const dbData = await db_authority.find({openid: verify_openid});
+    await db_authority.close();
+    if (dbData.length === 0) {
+        res.send(dataDeal(202));
         return;
     }
     const db = await mysql('TreeHome', 'comment');
-    await db.add({remarkId: id, userId, comment});
-    await db.sql('UPDATE remark SET comment=comment+1', {id});
+    await db.add({remarkid, comment, openid: verify_openid});
     res.send({
         code: 200,
         data: {
@@ -182,9 +174,10 @@ router.post('/publishComment', async function (req, res, next) {
  *     userId:用户id
  * }
  */
-router.get('/getComment', async function (req, res, next) {
-    const {id, userId} = req.query;
-    const exist = [id, userId].some(item => item == '');
+router.post('/getComment', async function (req, res, next) {
+    const {remarkid, pagination = {pageSize: 10, currentPage: 1}} = req.body;
+    const token = req.get('token')
+    const exist = [remarkid].some(item => item == '');
     if (exist) {
         res.send({
             code: 201,
@@ -192,17 +185,19 @@ router.get('/getComment', async function (req, res, next) {
         });
         return;
     }
+
     const db = await mysql('TreeHome', 'comment');
-    const data = await db.sql(`select * from comment natural join user`, {
-        userId: userId,
-        remarkId: id
+    const data = await db.sql(`select * from comment natural join qq_user`, {
+        remarkid,
+    }, pagination, 'order by id desc');
+    const total = await db.sql(`select count(*) as total from comment natural join qq_user`, {
+        remarkid
     });
-    res.send({
-        code: 200,
-        data: {
-            list: data
-        }
-    })
+    pagination.total = total[0].total;
+    res.send(dataDeal(200, {
+        list: data,
+        pagination
+    }))
 });
 
 module.exports = router;
