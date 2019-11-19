@@ -35,6 +35,22 @@ async function mysqlConnect(database, table) {
             valuesArr.push(`'${params[_key]}'`);
         }
         const sql_insert = `(${fieldsArr.join(',')}) VALUES (${valuesArr.join(',')})`;
+        console.log('add', `insert into ${Mysql.table} ${fieldsArr.length ? sql_insert : ''}`);
+        return await new Promise((resolve, reject) => {
+            Mysql.connection.query(`insert into ${Mysql.table} ${fieldsArr.length ? sql_insert : ''}`, (error, results, fields) => {
+                resolve(results);
+            })
+        })
+    }
+
+    async function replace(params) {
+        let fieldsArr = [];
+        let valuesArr = [];
+        for (const _key in params) {
+            fieldsArr.push(_key);
+            valuesArr.push(`'${params[_key]}'`);
+        }
+        const sql_insert = `(${fieldsArr.join(',')}) VALUES (${valuesArr.join(',')})`;
         console.log('add', `replace into ${Mysql.table} ${fieldsArr.length ? sql_insert : ''}`);
         return await new Promise((resolve, reject) => {
             Mysql.connection.query(`replace into ${Mysql.table} ${fieldsArr.length ? sql_insert : ''}`, (error, results, fields) => {
@@ -99,9 +115,10 @@ async function mysqlConnect(database, table) {
             paramsArr.push(`${key} = '${params[key]}'`)
         }
         const fields = paramsArr.join(' and ');
-        console.log('sql', `${sql} ${paramsArr ?  `where ${fields}` : ''} ${others ? others : ''} ${pagination ? `limit ${pagination.pageSize * (pagination.currentPage - 1)},${pagination.pageSize}` : ''}`)
+        console.log('params',fields)
+        console.log('sql', `${sql} ${fields ?  `where ${fields}` : ''} ${others ? others : ''} ${pagination ? `limit ${pagination.pageSize * (pagination.currentPage - 1)},${pagination.pageSize}` : ''}`)
         return await new Promise((resolve, reject) => {
-            Mysql.connection.query(`${sql} ${paramsArr ? `where ${fields}` : ''} ${others ? others : ''} ${pagination ? `limit ${pagination.pageSize * (pagination.currentPage - 1)},${pagination.pageSize}` : ''}`, (error, results, fields) => {
+            Mysql.connection.query(`${sql} ${fields ? `where ${fields}` : ''} ${others ? others : ''} ${pagination ? `limit ${pagination.pageSize * (pagination.currentPage - 1)},${pagination.pageSize}` : ''}`, (error, results, fields) => {
                 resolve(results);
             })
         })
@@ -113,6 +130,7 @@ async function mysqlConnect(database, table) {
     Mysql.delete = _delete;     // 删
     Mysql.close = _close;       // 关
     Mysql.sql = sql;
+    Mysql.replace = replace;
 
     return Mysql
 }

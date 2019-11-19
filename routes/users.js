@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const moment = require('moment');
 const axios = require('axios');
 const {BASECONFIG} = require('../utils/Enum');
 const mysql = require('../utils/database/connectMysql');
@@ -22,7 +23,7 @@ router.post('/login', async function (req, res, next) {
     });
     const token = signToken(openid, openid);
     const db = await mysql('TreeHome', 'authority');
-    await db.add({openid, session_key});
+    await db.replace({openid, session_key});
     await db.close();
     if (errcode !== 0) {
         res.send({
@@ -50,14 +51,18 @@ router.post('/saveuser', async function (req, res, next) {
     const dbData = await db_authority.find({openid: verify_openid});
     await db_authority.close();
     if (dbData.length === 0) {
-        res.send(dataDeal(202))
+        res.send(dataDeal(202));
         return
     }
     const db_qq_user = await mysql('TreeHome', 'qq_user');
     delete userData.unionId;
-    await db_qq_user.add({...userData, openid: verify_openid});
+    await db_qq_user.add({
+        ...userData,
+        openid: verify_openid,
+        registdate: moment(new Date()).format('YYYY-MM-DD HH:mm:ss')
+    });
     await db_qq_user.close();
-    res.send(dataDeal(200))
+    res.send(dataDeal(200));
 });
 
 /**
@@ -75,10 +80,14 @@ router.get('/getCurrentUser', async function (req, res, next) {
         return;
     }
     const db_qq_user = await mysql('TreeHome', 'qq_user');
-    const userData = db_qq_user.find({verify_openid});
-    await db_qq_user.close()
+    const userData = await db_qq_user.find({openid: verify_openid});
+    await db_qq_user.close();
     delete userData.openid;
-    res.send(dataDeal(200,userData))
+    if (userData.length === 0) {
+        res.send(dataDeal(204))
+        return
+    }
+    res.send(dataDeal(200, userData[0]))
 
 });
 

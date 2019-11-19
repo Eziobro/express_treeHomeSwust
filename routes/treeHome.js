@@ -10,16 +10,29 @@ const {uploadFile, signToken, verifyToken, decodeToken, cipherivDecrypt, dataDea
  * @requires moodId 心情id
  */
 router.post('/list', async function (req, res, next) {
-    const {pagination = {pageSize: 10, currentPage: 1}, ...params} = req.body;
+    const {pagination = {pageSize: 10, currentPage: 1}, flag = 0, tabid = 0, moodid = 0, ...params} = req.body;
     const token = req.get('token');
-    const exist = MOOD.some((value) => value.moodId == params.moodid);
-    if (!exist) {
-        res.send(dataDeal(201));
-        return;
+    let verify_openid;
+    if (flag) {
+        verify_openid = decodeToken(token);
+        const db_authority = await mysql('TreeHome', 'authority');
+        const dbData = await db_authority.find({openid: verify_openid});
+        await db_authority.close();
+        if (dbData.length === 0) {
+            res.send(dataDeal(202));
+            return;
+        }
+        params.openid = verify_openid;
     }
+
+    // const exist = MOOD.some((value) => value.moodId == params.moodid);
+    // if (!exist) {
+    //     res.send(dataDeal(201));
+    //     return;
+    // }
     const db_remark = await mysql('TreeHome', 'remark');
-    if (params.moodid == 0) {
-        delete params.moodid
+    if (moodid != 0) {
+        params.moodid = moodid;
     }
     const data = await db_remark.sql('select * from qq_user natural right join (select * from remark natural left join (select remarkid,count(*) as comment from comment group by remarkid) as comment) as remark', params, pagination, 'order by publishDate desc');
     const total = await db_remark.sql(`select count(*) as total from qq_user natural right join (select * from remark natural left join (select remarkid,count(*) as comment from comment group by remarkid) as comment) as remark`, {...params}, "", 'order by publishDate desc');
@@ -175,21 +188,31 @@ router.post('/publishcomment', async function (req, res, next) {
  * }
  */
 router.post('/getComment', async function (req, res, next) {
-    const {remarkid, pagination = {pageSize: 10, currentPage: 1}} = req.body;
-    const token = req.get('token')
+    const {remarkid, pagination = {pageSize: 10, currentPage: 1}, flag = 0} = req.body;
+    const params = {
+        remarkid
+    }
+    const token = req.get('token');
+    let verify_openid;
+    if (flag) {
+        verify_openid = await decodeToken(token);
+        const db_authority = await mysql('TreeHome', 'authority');
+        const dbData = await db_authority.find({openid: verify_openid});
+        await db_authority.close();
+        if (dbData.length === 0) {
+            res.send(dataDeal(202));
+            return;
+        }
+        params.openid = verify_openid;
+    }
     const exist = [remarkid].some(item => item == '');
     if (exist) {
-        res.send({
-            code: 201,
-            data: '参数错误'
-        });
+        res.send(dataDeal(201));
         return;
     }
 
     const db = await mysql('TreeHome', 'comment');
-    const data = await db.sql(`select * from comment natural join qq_user`, {
-        remarkid,
-    }, pagination, 'order by id desc');
+    const data = await db.sql(`select * from comment natural join qq_user`, params, pagination, 'order by id desc');
     const total = await db.sql(`select count(*) as total from comment natural join qq_user`, {
         remarkid
     });
