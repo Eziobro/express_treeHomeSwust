@@ -1,15 +1,15 @@
-var createError = require('http-errors');
-var express = require('express');
-var path = require('path');
-var cookieParser = require('cookie-parser');
-var logger = require('morgan');
-var favicon = require('serve-favicon')
+const createError = require('http-errors');
+const express = require('express');
+const path = require('path');
+const cookieParser = require('cookie-parser');
+const logger = require('morgan');
+const favicon = require('serve-favicon');
 
-var indexRouter = require('./routes/index');
-var user = require('./routes/users');
-var treeHome = require('./routes/treeHome');
+const indexRouter = require('./routes/index');
+const user = require('./routes/users');
+const treeHome = require('./routes/treeHome');
 
-var app = express();
+const app = express();
 
 // 跨域
 app.all('*', function (req, res, next) {
@@ -32,8 +32,7 @@ app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
 app.disable('etag');
 
-// app.use('/', indexRouter);
-// app.use('/users', usersRouter);
+app.use('/index', indexRouter);
 app.use('/mood', treeHome);
 app.use('/user', user);
 

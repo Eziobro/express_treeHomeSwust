@@ -35,7 +35,6 @@ async function mysqlConnect(database, table) {
             valuesArr.push(`'${params[_key]}'`);
         }
         const sql_insert = `(${fieldsArr.join(',')}) VALUES (${valuesArr.join(',')})`;
-        console.log('add', `insert into ${Mysql.table} ${fieldsArr.length ? sql_insert : ''}`);
         return await new Promise((resolve, reject) => {
             Mysql.connection.query(`insert into ${Mysql.table} ${fieldsArr.length ? sql_insert : ''}`, (error, results, fields) => {
                 resolve(results);
@@ -51,7 +50,6 @@ async function mysqlConnect(database, table) {
             valuesArr.push(`'${params[_key]}'`);
         }
         const sql_insert = `(${fieldsArr.join(',')}) VALUES (${valuesArr.join(',')})`;
-        console.log('add', `replace into ${Mysql.table} ${fieldsArr.length ? sql_insert : ''}`);
         return await new Promise((resolve, reject) => {
             Mysql.connection.query(`replace into ${Mysql.table} ${fieldsArr.length ? sql_insert : ''}`, (error, results, fields) => {
                 resolve(results);
@@ -65,7 +63,6 @@ async function mysqlConnect(database, table) {
             paramsArr.push(`${_key} like '%${params[_key]}%'`)
         }
         const fields = paramsArr.join(' and ');
-        console.log('find', `select * from ${Mysql.table} ${fields ? 'where' : ''} ${fields} ${pagination ? `limit ${pagination.pageSize * (pagination.currentPage - 1)},${pagination.pageSize}` : ''}`)
         return await new Promise((resolve, reject) => {
             Mysql.connection.query(`select * from ${Mysql.table} ${fields ? 'where' : ''} ${fields} ${pagination ? `limit ${pagination.pageSize * (pagination.currentPage - 1)},${pagination.pageSize}` : ''}`, (error, results, fields) => {
                 resolve(results);
@@ -84,7 +81,6 @@ async function mysqlConnect(database, table) {
         }
         const fields = paramsArr.join(' , ')
         const clause = dataArr.join(' , ');
-        console.log('update', `replace ${Mysql.table} set ${clause} where ${fields}`)
         return await new Promise((resolve, reject) => {
             Mysql.connection.query(`replace ${Mysql.table} set ${clause} where ${fields}`, (error, results, fields) => {
                 resolve(results);
@@ -109,14 +105,14 @@ async function mysqlConnect(database, table) {
         Mysql.connection.end();
     }
 
-    async function sql(sql, params, pagination, others) {
+    async function sql(sql, params, others) {
+        const {pagination, ...param} = params
         let paramsArr = [];
-        for (const key in params) {
-            paramsArr.push(`${key} = '${params[key]}'`)
+        for (const key in param) {
+            paramsArr.push(`${key} = '${param[key]}'`)
         }
         const fields = paramsArr.join(' and ');
-        console.log('params',fields)
-        console.log('sql', `${sql} ${fields ?  `where ${fields}` : ''} ${others ? others : ''} ${pagination ? `limit ${pagination.pageSize * (pagination.currentPage - 1)},${pagination.pageSize}` : ''}`)
+        console.log('sql',`${sql} ${fields ? `where ${fields}` : ''} ${others ? others : ''} ${pagination ? `limit ${pagination.pageSize * (pagination.currentPage - 1)},${pagination.pageSize}` : ''}`)
         return await new Promise((resolve, reject) => {
             Mysql.connection.query(`${sql} ${fields ? `where ${fields}` : ''} ${others ? others : ''} ${pagination ? `limit ${pagination.pageSize * (pagination.currentPage - 1)},${pagination.pageSize}` : ''}`, (error, results, fields) => {
                 resolve(results);

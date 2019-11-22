@@ -3,6 +3,8 @@ const {COS, NETSTATUS} = require('../utils/Enum');
 const path = require('path');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
+const {validationResult} = require('express-validator');
+const mysql = require('../utils/database/connectMysql');
 
 module.exports = function fixedZero(val) {
     return val * 1 < 10 ? `0${val}` : val;
@@ -366,6 +368,8 @@ module.exports.selectFile = function (rooter, filename, func) {
 };
 
 module.exports.signToken = function (data, privateKey, expiresIn, algorithm) {
+    console.log('data', data)
+    console.log('privateKey', privateKey)
     const config = {};
     if (algorithm) {
         config.algorithm = algorithm
@@ -425,4 +429,40 @@ module.exports.isGetRequire = function (data = []) {
         return true
     }
     return !data.some(item => item == "");
+}
+
+module.exports.dataType = function (tgt, type) {
+    const dataType = Object.prototype.toString.call(tgt).replace(/\[object /g, "").replace(/\]/g, "").toLowerCase();
+    return type ? dataType === type : dataType;
+}
+
+module.exports.validate = function (validations) {
+    return async (req, res, next) => {
+        await Promise.all(validations.map(validation => validation.run(req)));
+
+        const errors = validationResult(req);
+        if (errors.isEmpty()) {
+            return next();
+        }
+
+        console.log('err', errors)
+
+        res.status(201).send({errors: errors.array()});
+    };
+};
+
+const _decodeToken = function (token) {
+    return jwt.decode(token);
+};
+
+module.exports.checkToken = async function (token, {req, location, path}) {
+    const db_authority = await mysql('TreeHome', 'authority');
+    const openid = await _decodeToken(token);
+    const dbData = await db_authority.find({openid});
+    await db_authority.close();
+    if (dbData.length === 0) {
+        throw new Error('没有权限')
+    }
+    const {method} = req;
+    return method == 'GET' ? req.query.openid = openid : req.body.openid = openid;
 }
