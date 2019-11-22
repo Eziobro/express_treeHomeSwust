@@ -1,22 +1,23 @@
 const express = require('express');
-const app = express();
 const router = express.Router();
 const moment = require('moment');
 const axios = require('axios');
 const {matchedData, header, body} = require('express-validator');
 const {BASECONFIG} = require('../utils/Enum');
 const mysql = require('../utils/database/connectMysql');
-const {signToken, dataDeal,validate, checkToken} = require('../utils/utils');
+const {signToken, dataDeal, validate, checkToken} = require('../utils/utils');
 
 /**
  * @function 登录获取token /user/login
- * @requires code 前端登录时获取的code
- * @return token 签名
+ * @requires {
+ *     code
+ * }
  */
-router.post('/login', validate([
+router.post('/login',
+    validate([
         body('code').exists({checkNull: true})
     ]),
-    async function (req, res, next) {
+    async function (req, res) {
         const {code} = req.body;
 
         const {data: {errcode, errmsg, openid, session_key}} = await axios({
@@ -26,7 +27,7 @@ router.post('/login', validate([
 
         const token = signToken(openid, openid);
         const db = await mysql('test', 'authority');
-        await db.replace({openid, session_key});
+        await db.replace({openid, session_key, token});
         await db.close();
         if (errcode !== 0) {
             res.status(errcode).send({
@@ -35,19 +36,26 @@ router.post('/login', validate([
             });
             return
         }
-        res.status(200).send(dataDeal(200, token));
+        res.send(dataDeal(200, token));
     }
 );
 
 /**
  * @function 在数据库中保存用户 /user/saveuser
  * @requires {
- *     encryptedData 获取用户信息的加密数据
- *     iv 偏移向量
- *     token 签名
+ *     token
+ *     nickName
+ *     avatarUrl
+ * }
+ * @params {
+ *     gender
+ *     language
+ *     city
+ *     province
  * }
  */
-router.post('/saveuser', validate([
+router.post('/saveuser',
+    validate([
         header('token').exists({checkNull: true}).custom(checkToken),
         body('nickName').exists({checkNull: true}).isString().escape(),
         body('gender'),
@@ -56,7 +64,7 @@ router.post('/saveuser', validate([
         body('province'),
         body('avatarUrl').exists().isURL()
     ]),
-    async function (req, res, next) {
+    async function (req, res) {
         const {openid} = req.body;
         const requiredData = await matchedData(req, {locations: ['body'], includeOptionals: false});
         const params = {openid, ...requiredData};
@@ -72,12 +80,15 @@ router.post('/saveuser', validate([
 
 /**
  * @function 获取当前登录用户的信息 /user/getcurrentuser
- * @requires token 签名
+ * @requires {
+ *     token
+ * }
  */
-router.post('/getcurrentuser', validate([
+router.post('/getcurrentuser',
+    validate([
         header('token').exists({checkNull: true}).custom(checkToken)
     ]),
-    async function (req, res, next) {
+    async function (req, res) {
         const {openid} = req.body;
         const db_qq_user = await mysql('test', 'qq_user');
         const userData = await db_qq_user.find({openid});

@@ -1,146 +1,23 @@
 const Crypto = require('cryptojs/cryptojs.js').Crypto;
-const {COS, NETSTATUS} = require('../utils/Enum');
 const path = require('path');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const {validationResult} = require('express-validator');
 const mysql = require('../utils/database/connectMysql');
-
-module.exports = function fixedZero(val) {
-    return val * 1 < 10 ? `0${val}` : val;
-};
+const {COS, NETSTATUS} = require('../utils/Enum');
 
 /**
- *
- * @param nodeList
- * @param parentPath
- * @returns {Array}
+ * 深拷贝
+ * @param obj
+ * @returns {[]|*}
  */
-module.exports = function getPlainNode(nodeList, parentPath = '') {
-    const arr = [];
-    nodeList.forEach(node => {
-        const item = node;
-        item.path = `${parentPath}/${item.path || ''}`.replace(/\/+/g, '/');
-        item.exact = true;
-        if (item.children && !item.component) {
-            arr.push(...getPlainNode(item.children, item.path));
-        } else {
-            if (item.children && item.component) {
-                item.exact = false;
-            }
-            arr.push(item);
-        }
-    });
-    return arr;
-};
-
-module.exports = function getRelation(str1, str2) {
-    if (str1 === str2) {
-    }
-    const arr1 = str1.split('/');
-    const arr2 = str2.split('/');
-    if (arr2.every((item, index) => item === arr1[index])) {
-        return 1;
-    }
-    if (arr1.every((item, index) => item === arr2[index])) {
-        return 2;
-    }
-    return 3;
-}
-
-module.exports = function getRenderArr(routes) {
-    let renderArr = [];
-    renderArr.push(routes[0]);
-    for (let i = 1; i < routes.length; i += 1) {
-        // 去重
-        renderArr = renderArr.filter(item => getRelation(item, routes[i]) !== 1);
-        // 是否包含
-        const isAdd = renderArr.every(item => getRelation(item, routes[i]) === 3);
-        if (isAdd) {
-            renderArr.push(routes[i]);
-        }
-    }
-    return renderArr;
-}
-
-/**
- * Get router routing configuration
- * { path:{name,...param}}=>Array<{name,path ...param}>
- * @param {string} path
- * @param routerData
- */
-module.exports = function getRoutes(path, routerData) {
-    let routes = Object.keys(routerData).filter(
-        routePath => routePath.indexOf(path) === 0 && routePath !== path,
-    );
-    // Replace path to '' eg. path='user' /user/name => name
-    routes = routes.map(item => item.replace(path, ''));
-    // Get the route to be rendered to remove the deep rendering
-    const renderArr = getRenderArr(routes);
-    // Conversion and stitching parameters
-    return renderArr.map(item => {
-        const exact = !routes.some(route => route !== item && getRelation(route, item) === 1);
-        return {
-            exact,
-            ...routerData[`${path}${item}`],
-            key: `${path}${item}`,
-            path: `${path}${item}`,
-        };
-    });
-};
-
-/* eslint no-useless-escape:0 */
-const reg = /(((^https?:(?:\/\/)?)(?:[-;:&=+$,\w]+@)?[A-Za-z0-9.-]+(?::\d+)?|(?:www.|[-;:&=+$,\w]+@)[A-Za-z0-9.-]+)((?:\/[\+~%\/.\w-_]*)?\??(?:[-\+=&;%@.\w_]*)#?(?:[\w]*))?)$/;
-
-module.exports = function isUrl(path) {
-    return reg.test(path);
-};
-
-module.exports = function deepCopy(o) {
-    const isArray = o instanceof Array;
-    const isObject = o instanceof Object;
-    if (!isObject) return o;
+module.exports = function deepCopy(obj) {
+    const isArray = obj instanceof Array;
+    const isObject = obj instanceof Object;
+    if (!isObject) return obj;
     const n = (isArray ? [] : {});
-    for (const k in o) n[k] = deepCopy(o[k]);
+    for (const k in obj) n[k] = deepCopy(obj[k]);
     return n;
-};
-
-module.exports = function findValueByKey(key, src, type, defaults) {
-    const result = src.filter((current) => {
-        return current.key == key;
-    })[0];
-    return result ? (type ? result[type] : result.value) : type ? defaults : '空';
-};
-
-module.exports = function filter(obj, func) {
-    let result = {};
-    for (let _key in obj) {
-        if (obj.hasOwnProperty(_key) && func(_key, obj[_key])) {
-            result[_key] = obj[_key];
-        }
-    }
-    return result;
-};
-
-/**
- * 省略过长的字符串
- * @param str 需要检索的字符串
- * @param maxLen 字符串的最大长度
- * @returns {string}
- */
-module.exports = function Ellipsis(str, maxLen) {
-    str = str.trim();
-    if (typeof str != 'string') {
-        return '请传入字符串'
-    }
-    if (typeof maxLen != 'number') {
-        return '请传入数字'
-    }
-    if (str.length > maxLen) {
-        str = str.substr(0, maxLen);
-        return str + '...';
-    }
-    return str;
 };
 
 /**
@@ -221,7 +98,7 @@ module.exports = function type(obj) {
 };
 
 /**
- *
+ * 时间处理格式化
  * @param time
  * @param fmt
  * @returns {void | string}
@@ -256,7 +133,6 @@ module.exports.unique = function (array) {
 };
 
 /**
- * @description
  * 对称解密
  * @param encryptedData
  * @param sessionKey
@@ -265,34 +141,34 @@ module.exports.unique = function (array) {
  */
 module.exports.cipherivDecrypt = function (encryptedData, sessionKey, iv) {
     // base64 decode ：使用 CryptoJS 中 Crypto.util.base64ToBytes()进行 base64解码
-    var encryptedData = Crypto.util.base64ToBytes(encryptedData)
-    var key = Crypto.util.base64ToBytes(sessionKey);
-    var iv = Crypto.util.base64ToBytes(iv);
+    const _encryptedData = Crypto.util.base64ToBytes(encryptedData);
+    const key = Crypto.util.base64ToBytes(sessionKey);
+    const _iv = Crypto.util.base64ToBytes(iv);
 
     // 对称解密使用的算法为 AES-128-CBC，数据采用PKCS#7填充
-    var mode = new Crypto.mode.CBC(Crypto.pad.pkcs7);
+    const mode = new Crypto.mode.CBC(Crypto.pad.pkcs7);
 
     try {
         // 解密
-        var bytes = Crypto.AES.decrypt(encryptedData, key, {
+        const bytes = Crypto.AES.decrypt(_encryptedData, key, {
             asBpytes: true,
-            iv: iv,
+            iv: _iv,
             mode: mode
         });
 
-        var decryptResult = JSON.parse(bytes);
-
+        return JSON.parse(bytes)
     } catch (err) {
         console.log(err)
     }
-
-    return decryptResult
 };
 
-module.exports.checkPath = function (path) {
-    const reg = /\//gi
-}
-
+/**
+ * 上传文件到存储桶中
+ * @param rooter
+ * @param filename
+ * @param file
+ * @param func
+ */
 module.exports.uploadFile = function (rooter, filename, file, func) {
     const cos = new COS({
         SecretId: COS.SECRETID,
@@ -312,6 +188,12 @@ module.exports.uploadFile = function (rooter, filename, file, func) {
     });
 };
 
+/**
+ * 从存储桶下载文件
+ * @param rooter
+ * @param filename
+ * @param func
+ */
 module.exports.downloadFile = function (rooter, filename, func) {
     const cos = new COS({
         SecretId: COS.SECRETID,
@@ -331,6 +213,12 @@ module.exports.downloadFile = function (rooter, filename, func) {
     });
 };
 
+/**
+ * 从存储桶中删除文件
+ * @param rooter
+ * @param filename
+ * @param func
+ */
 module.exports.deleteFile = function (rooter, filename, func) {
     const cos = new COS({
         SecretId: COS.SECRETID,
@@ -349,6 +237,12 @@ module.exports.deleteFile = function (rooter, filename, func) {
     });
 };
 
+/**
+ *
+ * @param rooter
+ * @param filename
+ * @param func
+ */
 module.exports.selectFile = function (rooter, filename, func) {
     const cos = new COS({
         SecretId: COS.SECRETID,
@@ -367,9 +261,15 @@ module.exports.selectFile = function (rooter, filename, func) {
     });
 };
 
+/**
+ * 签名函数
+ * @param data
+ * @param privateKey
+ * @param expiresIn
+ * @param algorithm
+ * @returns {undefined|*}
+ */
 module.exports.signToken = function (data, privateKey, expiresIn, algorithm) {
-    console.log('data', data)
-    console.log('privateKey', privateKey)
     const config = {};
     if (algorithm) {
         config.algorithm = algorithm
@@ -380,6 +280,13 @@ module.exports.signToken = function (data, privateKey, expiresIn, algorithm) {
     return jwt.sign(data, privateKey, {...config})
 };
 
+/**
+ * 验证token
+ * @param token
+ * @param privateKey
+ * @param callback
+ * @returns {*}
+ */
 module.exports.verifyToken = function (token, privateKey, callback) {
     let data;
     jwt.verify(token, privateKey, (error, decoded) => {
@@ -389,34 +296,54 @@ module.exports.verifyToken = function (token, privateKey, callback) {
     return data;
 };
 
+/**
+ * 对称解密
+ * @param encryptedData
+ * @param sessionKey
+ * @param iv
+ * @returns {*}
+ * @private
+ */
 module.exports._decryptData = function (encryptedData, sessionKey, iv) {
     let decoded;
-// base64 decode
-    var sessionKey = Buffer.from(sessionKey, 'base64').toString('utf8')
-    encryptedData = Buffer.from(encryptedData, 'base64').toString('utf8')
-    iv = Buffer.from(iv, 'base64').toString('utf8')
+
+    // base64 decode
+    const _sessionKey = Buffer.from(sessionKey, 'base64').toString('utf8');
+    encryptedData = Buffer.from(encryptedData, 'base64').toString('utf8');
+    iv = Buffer.from(iv, 'base64').toString('utf8');
 
     try {
         // 解密
-        const decipher = crypto.createDecipheriv('aes-128-cbc', sessionKey, iv);
+        const decipher = crypto.createDecipheriv('aes-128-cbc', _sessionKey, iv);
         // 设置自动 padding 为 true，删除填充补位
-        decipher.setAutoPadding(true)
+        decipher.setAutoPadding(true);
         decoded = decipher.update(encryptedData, 'binary', 'utf8');
-        decoded += decipher.final('utf8')
+        decoded += decipher.final('utf8');
 
-        decoded = JSON.parse(decoded)
+        decoded = JSON.parse(decoded);
 
     } catch (err) {
         console.log('err', err);
     }
 
     return decoded
-}
+};
 
+/**
+ * 解密签证
+ * @param token
+ * @returns {null|{payload, signature, header}}
+ */
 module.exports.decodeToken = function (token) {
     return jwt.decode(token);
 };
 
+/**
+ * 根据code定义接口返回的数据
+ * @param code
+ * @param data
+ * @returns {{code: *, data: (*)}}
+ */
 module.exports.dataDeal = function (code, data) {
     return {
         code: code,
@@ -424,18 +351,11 @@ module.exports.dataDeal = function (code, data) {
     }
 };
 
-module.exports.isGetRequire = function (data = []) {
-    if (data.length === 0) {
-        return true
-    }
-    return !data.some(item => item == "");
-}
-
-module.exports.dataType = function (tgt, type) {
-    const dataType = Object.prototype.toString.call(tgt).replace(/\[object /g, "").replace(/\]/g, "").toLowerCase();
-    return type ? dataType === type : dataType;
-}
-
+/**
+ * 对验证参数系统进行排错
+ * @param validations
+ * @returns {Function}
+ */
 module.exports.validate = function (validations) {
     return async (req, res, next) => {
         await Promise.all(validations.map(validation => validation.run(req)));
@@ -445,19 +365,23 @@ module.exports.validate = function (validations) {
             return next();
         }
 
-        console.log('err', errors)
+        console.log('err', errors);
 
         res.status(201).send({errors: errors.array()});
     };
 };
 
-const _decodeToken = function (token) {
-    return jwt.decode(token);
-};
-
+/**
+ * 验证参数系统中解密token并验证是否存在于数据库
+ * @param token
+ * @param req
+ * @param location
+ * @param path
+ * @returns {Promise<*>}
+ */
 module.exports.checkToken = async function (token, {req, location, path}) {
     const db_authority = await mysql('TreeHome', 'authority');
-    const openid = await _decodeToken(token);
+    const openid = await jwt.decode(token);
     const dbData = await db_authority.find({openid});
     await db_authority.close();
     if (dbData.length === 0) {
@@ -465,4 +389,4 @@ module.exports.checkToken = async function (token, {req, location, path}) {
     }
     const {method} = req;
     return method == 'GET' ? req.query.openid = openid : req.body.openid = openid;
-}
+};
