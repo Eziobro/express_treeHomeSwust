@@ -38,7 +38,7 @@ router.post('/list',
             param.openid = openid;
         }
 
-        sql = 'select remarkid,context,imgurl,publishdate,tagid,topic,nickName,gender,language,city,province,country,avatarUrl,IFNULL( star, 0 ) AS star,IFNULL( `comment`, 0 ),IFNULL(id,0) as flag AS `comment` from (((select * from remark natural left join qq_user) as remark NATURAL LEFT JOIN (select remarkid,ifnull(count(*),0) as star from star group by remarkid) as star) NATURAL LEFT JOIN (select remarkid,ifnull(count(*),0) as comment from comment group by remarkid) as comment) NATURAL LEFT JOIN star'
+        sql = 'select remarkid,context,imgurl,publishdate,tagid,topic,nickName,gender,language,city,province,country,avatarUrl,IFNULL( star, 0 ) AS star,IFNULL( `comment`, 0 ) as comment,IFNULL(id,0) as flag from (((select * from remark natural left join qq_user) as remark NATURAL LEFT JOIN (select remarkid,ifnull(count(*),0) as star from star group by remarkid) as star) NATURAL LEFT JOIN (select remarkid,ifnull(count(*),0) as comment from comment group by remarkid) as comment) NATURAL LEFT JOIN star'
 
         const db_remark = await mysql('test', 'remark');
         const data = await db_remark.sql(sql, {
