@@ -227,7 +227,7 @@ router.post('/getComment',
         const params = {openid, ...requiredData};
         const {pagination, ...param} = requiredData;
         const db = await mysql('test', 'comment');
-        const data = await db.sql(`select id,remarkid,comment,nickName,avatarUrl,registdate from comment natural join qq_user`, requiredData, 'order by id desc');
+        const data = await db.sql(`select id,remarkid,comment,nickName,avatarUrl from comment natural join qq_user`, requiredData, 'order by id desc');
         const total = await db.sql(`select count(*) as total from comment natural join qq_user`, param);
         res.send(dataDeal(200, {list: data, pagination: {...params.pagination, total: total[0].total}}))
     }
