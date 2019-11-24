@@ -92,10 +92,11 @@ router.post('/getcurrentuser',
         const {openid} = req.body;
         const db_qq_user = await mysql('test', 'qq_user');
         const userData = await db_qq_user.find({openid});
+        userData[0].registdate =  moment(userData[0].registdate).format('YYYY-MM-DD HH:mm:ss')
         await db_qq_user.close();
         delete userData.openid;
         if (userData.length === 0) {
-            res.status(204).send(dataDeal(204))
+            res.status(204).send(dataDeal(204));
             return
         }
         res.status(200).send(dataDeal(200, userData[0]))
